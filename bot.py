@@ -49,7 +49,7 @@ def download_video(url):
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         return f"{DOWNLOAD_DIR}/{info['id']}.mp4"
-
+        
 def send_random_short(context):
     global last_msg_id
     try:
@@ -86,6 +86,39 @@ def button(update: Update, context):
     query.answer()
     if query.data == "next":
         send_random_short(context)
+        
+def send_random_short(context):
+    global last_msg_id
+    try:
+        print("Fetching shorts from channel...")
+        urls = get_channel_shorts()
+        print(f"Found {len(urls)} shorts.")
+
+        if not urls:
+            print("No shorts found.")
+            return
+
+        random.shuffle(urls)
+        for url in urls:
+            print(f"Trying URL: {url}")
+            try:
+                video_path = download_video(url)
+                print(f"Downloaded: {video_path}")
+
+                if last_msg_id:
+                    bot.delete_message(chat_id=GROUP_ID, message_id=last_msg_id)
+
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("➡️ Next", callback_data="next")]
+                ])
+                msg = bot.send_video(chat_id=GROUP_ID, video=open(video_path, 'rb'), reply_markup=keyboard)
+                last_msg_id = msg.message_id
+                break
+            except Exception as e:
+                print("Video send failed:", e)
+                continue
+    except Exception as e:
+        print("Error sending short:", e)
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
